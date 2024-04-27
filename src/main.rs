@@ -9,6 +9,9 @@ struct Args {
     recursive: bool,
     text: String,
     file_path: String,
+
+    #[arg(long)]
+    no_color: bool
 }
 
 fn main() -> std::io::Result<()> {

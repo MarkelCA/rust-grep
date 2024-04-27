@@ -49,11 +49,13 @@ fn grep_file(args: &Args, text: &str) -> std::io::Result<()> {
 
         if n == 0 { break; }
 
-        let line =  String::from_utf8_lossy(&chunk);
+        let mut line =  String::from_utf8_lossy(&chunk).to_string();
 
         if line.contains(text) {
-            let colored_line = line.replace(text, &text.red().to_string());
-            print!("{}",colored_line);
+            if !args.no_color {
+                line = line.replace(text, &text.red().to_string());
+            }
+            print!("{}",line);
         }
     }
     Ok(())
