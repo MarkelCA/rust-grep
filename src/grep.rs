@@ -1,4 +1,5 @@
 use std::fs::File;
+use colored::Colorize;
 use std::io::{BufRead, BufReader};
 use std::fs;
 use std::path::PathBuf;
@@ -7,23 +8,29 @@ use crate::Args;
 pub fn run(args: Args) -> std::io::Result<()> {
 
     if !args.recursive {
-        grep_file(args.file_path, &args.text)?;
+        grep_file(&args, &args.text)?;
     } else {
-        let path = PathBuf::from(args.file_path);
-        grep_dir(path, &args.text);
+        let path = PathBuf::from(&args.file_path);
+        grep_dir(path, &args);
     }
 
     Ok(())
 }
 
-fn grep_dir(path: PathBuf, text: &str) {
+fn grep_dir(path: PathBuf, args: &Args) {
     let paths = fs::read_dir(path).unwrap();
     for p in paths {
         let p = p.unwrap().path();
         if p.is_dir() {
-            grep_dir(p, text);
+            grep_dir(p, args);
         } else {
-            grep_file(p.display().to_string(), text).unwrap_or_else(|err| {
+            let ar = crate::Args {
+                file_path: p.display().to_string(),
+                text: args.text.clone(),
+                ..*args
+            };
+
+            grep_file(&ar, &args.text).unwrap_or_else(|err| {
                 eprintln!("Error reading file {} ({err})", p.display())
             });
         }
@@ -31,8 +38,8 @@ fn grep_dir(path: PathBuf, text: &str) {
 }
 
 
-fn grep_file(file_path: String, text: &str) -> std::io::Result<()> {
-    let path = PathBuf::from(file_path);
+fn grep_file(args: &Args, text: &str) -> std::io::Result<()> {
+    let path = PathBuf::from(&args.file_path);
     let file = File::open(&path)?;
     let mut reader = BufReader::new(&file);
 
@@ -45,10 +52,10 @@ fn grep_file(file_path: String, text: &str) -> std::io::Result<()> {
         let line =  String::from_utf8_lossy(&chunk);
 
         if line.contains(text) {
-            print!("{}",line);
+            let colored_line = line.replace(text, &text.red().to_string());
+            print!("{}",colored_line);
         }
     }
-
     Ok(())
 }
 
