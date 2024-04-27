@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
 use std::fs;
 use std::path::PathBuf;
 use crate::Args;
@@ -34,18 +34,18 @@ fn grep_dir(path: PathBuf, text: &str) {
 fn grep_file(file_path: String, text: &str) -> std::io::Result<()> {
     let path = PathBuf::from(file_path);
     let file = File::open(&path)?;
-    let reader = BufReader::new(file);
+    let mut reader = BufReader::new(&file);
 
-    let mut line = String::new();
-    for byte in reader.bytes() {
-        let b = byte?;
-        if b == b'\n' {
-            if line.contains(text) {
-                println!("{}",line);
-            }
-            line.clear();
-        } else {
-            line.push(char::from(b))
+    loop {
+        let mut chunk = Vec::new();
+        let n = reader.read_until(10,&mut chunk)?;
+
+        if n == 0 { break; }
+
+        let line =  String::from_utf8_lossy(&chunk);
+
+        if line.contains(text) {
+            print!("{}",line);
         }
     }
 
