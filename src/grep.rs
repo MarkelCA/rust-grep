@@ -5,24 +5,42 @@ use std::fs;
 use std::path::PathBuf;
 use crate::Args;
 
+struct Stats {
+    matches: u64
+}
+
+impl Stats {
+    pub fn new() -> Self {
+        Stats{
+            matches: 0
+        }
+    }
+    
+}
+
 pub fn run(args: Args) -> std::io::Result<()> {
+    let mut stats = &mut Stats::new();
 
     if !args.recursive {
-        grep_file(&args, &args.text)?;
+        grep_file(&args, &mut stats)?;
     } else {
         let path = PathBuf::from(&args.file_path);
-        grep_dir(path, &args);
+        grep_dir(path, &args, &mut stats);
+    }
+
+    if args.count {
+        println!("{}", stats.matches);
     }
 
     Ok(())
 }
 
-fn grep_dir(path: PathBuf, args: &Args) {
+fn grep_dir(path: PathBuf, args: &Args, mut stats: &mut Stats) {
     let paths = fs::read_dir(path).unwrap();
     for p in paths {
         let p = p.unwrap().path();
         if p.is_dir() {
-            grep_dir(p, args);
+            grep_dir(p, args, &mut stats);
         } else {
             let ar = crate::Args {
                 file_path: p.display().to_string(),
@@ -30,15 +48,14 @@ fn grep_dir(path: PathBuf, args: &Args) {
                 ..*args
             };
 
-            grep_file(&ar, &args.text).unwrap_or_else(|err| {
+            grep_file(&ar, &mut stats).unwrap_or_else(|err| {
                 eprintln!("Error reading file {} ({err})", p.display())
             });
         }
     }
 }
 
-
-fn grep_file(args: &Args, text: &str) -> std::io::Result<()> {
+fn grep_file(args: &Args, stats: &mut Stats) -> std::io::Result<()> {
     let path = PathBuf::from(&args.file_path);
     let file = File::open(&path)?;
     let mut reader = BufReader::new(&file);
@@ -49,13 +66,16 @@ fn grep_file(args: &Args, text: &str) -> std::io::Result<()> {
 
         if n == 0 { break; }
 
-        let mut line =  String::from_utf8_lossy(&chunk).to_string();
+        let mut line = String::from_utf8_lossy(&chunk).to_string();
 
-        if line.contains(text) {
+        if line.contains(&args.text) {
+            stats.matches += 1;
             if !args.no_color {
-                line = line.replace(text, &text.red().to_string());
+                line = line.replace(&args.text, &args.text.red().to_string());
             }
-            print!("{}",line);
+            if !args.count {
+                print!("{}",line);
+            }
         }
     }
     Ok(())
