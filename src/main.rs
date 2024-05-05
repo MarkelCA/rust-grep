@@ -1,4 +1,5 @@
 mod grep;
+mod stats;
 
 use clap::Parser;
 
@@ -6,7 +7,7 @@ use clap::Parser;
 #[command(version, about, long_about = None)]
 struct Args {
     text: String,
-    file_path: String,
+    file_paths: Vec<String>,
     #[arg(short, long)]
     recursive: bool,
     #[arg(long)]

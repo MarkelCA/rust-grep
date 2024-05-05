@@ -4,27 +4,26 @@ use std::io::{BufRead, BufReader};
 use std::fs;
 use std::path::PathBuf;
 use crate::Args;
-
-struct Stats {
-    matches: u64
-}
-
-impl Stats {
-    pub fn new() -> Self {
-        Stats{
-            matches: 0
-        }
-    }
-    
-}
+use crate::stats::Stats;
 
 pub fn run(args: Args) -> std::io::Result<()> {
+    for file in args.file_paths.iter() {
+        match run_file(&args, file) {
+            Err(error) => eprint!("{}",error),
+            _ => ()
+        }
+    }
+
+    Ok(())
+}
+
+fn run_file(args: &Args, file_path: &String) -> std::io::Result<()> {
     let mut stats = &mut Stats::new();
 
     if !args.recursive {
-        grep_file(&args, &mut stats)?;
+        grep_file(&args,file_path,&mut stats)?;
     } else {
-        let path = PathBuf::from(&args.file_path);
+        let path = PathBuf::from(file_path);
         grep_dir(path, &args, &mut stats);
     }
 
@@ -42,21 +41,15 @@ fn grep_dir(path: PathBuf, args: &Args, mut stats: &mut Stats) {
         if p.is_dir() {
             grep_dir(p, args, &mut stats);
         } else {
-            let ar = crate::Args {
-                file_path: p.display().to_string(),
-                text: args.text.clone(),
-                ..*args
-            };
-
-            grep_file(&ar, &mut stats).unwrap_or_else(|err| {
+            grep_file(&args, &p.display().to_string(), &mut stats).unwrap_or_else(|err| {
                 eprintln!("Error reading file {} ({err})", p.display())
             });
         }
     }
 }
 
-fn grep_file(args: &Args, stats: &mut Stats) -> std::io::Result<()> {
-    let path = PathBuf::from(&args.file_path);
+fn grep_file(args: &Args, file_path: &String, stats: &mut Stats) -> std::io::Result<()> {
+    let path = PathBuf::from(file_path);
     let file = File::open(&path)?;
     let mut reader = BufReader::new(&file);
 
