@@ -1,4 +1,6 @@
+use std::fmt::format;
 use std::fs::File;
+use anyhow::Context;
 use colored::Colorize;
 use std::io::{BufRead, BufReader};
 use std::fs;
@@ -7,28 +9,29 @@ use crate::Args;
 use crate::stats::Stats;
 
 pub fn run(args: Args) -> std::io::Result<()> {
+    let mut stats = &mut Stats::new();
     for file in args.file_paths.iter() {
-        match run_file(&args, file) {
-            Err(error) => eprint!("{}",error),
+        match run_file(&args, file, &mut stats) {
+            Err(error) => eprint!("{:?}\n",error),
             _ => ()
         }
+    }
+
+    if args.count {
+        println!("{}", stats.matches);
     }
 
     Ok(())
 }
 
-fn run_file(args: &Args, file_path: &String) -> std::io::Result<()> {
-    let mut stats = &mut Stats::new();
+fn run_file(args: &Args, file_path: &String, mut stats: &mut Stats) -> anyhow::Result<()> {
 
     if !args.recursive {
-        grep_file(&args,file_path,&mut stats)?;
+        grep_file(&args,file_path,&mut stats)
+            .with_context(|| format!("Grepping file: {}", file_path))?;
     } else {
         let path = PathBuf::from(file_path);
         grep_dir(path, &args, &mut stats);
-    }
-
-    if args.count {
-        println!("{}", stats.matches);
     }
 
     Ok(())
@@ -48,9 +51,10 @@ fn grep_dir(path: PathBuf, args: &Args, mut stats: &mut Stats) {
     }
 }
 
-fn grep_file(args: &Args, file_path: &String, stats: &mut Stats) -> std::io::Result<()> {
+fn grep_file(args: &Args, file_path: &String, stats: &mut Stats) -> anyhow::Result<()> {
     let path = PathBuf::from(file_path);
-    let file = File::open(&path)?;
+    let file = File::open(&path)
+        .with_context(|| format!("Reading path: {}",&path.display().to_string()))?;
     let mut reader = BufReader::new(&file);
 
     loop {
