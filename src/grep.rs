@@ -11,9 +11,8 @@ use crate::stats::Stats;
 pub fn run(args: Args) -> std::io::Result<()> {
     let mut stats = &mut Stats::new();
     for file in args.file_paths.iter() {
-        match run_file(&args, file, &mut stats) {
-            Err(error) => eprint!("{:?}\n",error),
-            _ => ()
+        if let Err(error) = run_file(&args, file, &mut stats)  {
+            eprint!("{:?}\n",error);
         }
     }
 
